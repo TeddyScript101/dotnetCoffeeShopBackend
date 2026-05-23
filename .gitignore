@@ -1,0 +1,65 @@
+# ===========================
+# .NET / ASP.NET Core
+# ===========================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ===========================
+# Build Results
+# ===========================
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+
+# ===========================
+# NuGet Packages
+# ===========================
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!**/packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ===========================
+# SQLite Database (Local Dev)
+# ===========================
+*.db
+*.db-shm
+*.db-wal
+
+# ===========================
+# Secrets & Config Overrides
+# ===========================
+appsettings.Development.json
+secrets.json
+**/secrets.json
+
+# ===========================
+# Visual Studio / Rider / VS Code
+# ===========================
+.vs/
+.vscode/
+.idea/
+*.rsuser
+*.suo
+*.user
+
+# ===========================
+# OS Files
+# ===========================
+.DS_Store
+Thumbs.db
