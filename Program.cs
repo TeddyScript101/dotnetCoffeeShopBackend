@@ -45,14 +45,19 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 var app = builder.Build();
 
-// Seed default roles
+// Seed default roles and data
 using (var scope = app.Services.CreateScope())
 {
     await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
+    await DatabaseSeeder.SeedDataAsync(scope.ServiceProvider);
 }
 
 // Configure the HTTP request pipeline.

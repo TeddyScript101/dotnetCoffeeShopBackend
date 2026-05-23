@@ -19,3 +19,15 @@ Content-Type: application/json
   "email": "test@test.com",
   "password": "Password123!"
 }
+
+### GET All Products
+GET {{CoffeeShopApi_HostAddress}}/api/products
+Accept: application/json
+
+### GET Coffee Beans
+GET {{CoffeeShopApi_HostAddress}}/api/products/coffeebeans
+Accept: application/json
+
+### GET Equipments
+GET {{CoffeeShopApi_HostAddress}}/api/products/equipments
+Accept: application/json
