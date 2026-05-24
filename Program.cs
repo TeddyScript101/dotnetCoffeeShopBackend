@@ -78,17 +78,21 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-// Swagger/Scalar are always enabled so portfolio reviewers can explore the API
+// MapOpenApi serves the raw spec at /openapi/v1.json
+// Scalar serves the interactive UI at /scalar/v1 (works in all environments)
+// Swagger UI is only used in Development (Swashbuckle 10.x has static file issues in production)
 app.MapOpenApi();
-app.UseSwagger();
-app.UseSwaggerUI();
+
+app.MapScalarApiReference(options =>
+{
+    options.WithOpenApiRoutePattern("/openapi/v1.json");
+    options.WithTitle("Coffee Shop API");
+});
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapScalarApiReference(options =>
-    {
-        options.WithOpenApiRoutePattern("/openapi/v1.json");
-    });
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
