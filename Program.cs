@@ -68,9 +68,11 @@ builder.Services.AddControllers()
 
 var app = builder.Build();
 
-// Seed default roles and data
+// Run migrations and seed data on startup
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<CoffeeShopDbContext>();
+    await db.Database.MigrateAsync();
     await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
     await DatabaseSeeder.SeedDataAsync(scope.ServiceProvider);
 }
