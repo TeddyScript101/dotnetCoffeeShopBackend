@@ -83,17 +83,16 @@ using (var scope = app.Services.CreateScope())
 // Swagger UI is only used in Development (Swashbuckle 10.x has static file issues in production)
 app.MapOpenApi();
 
+// Swagger UI at /swagger
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Scalar UI at /scalar/v1
 app.MapScalarApiReference(options =>
 {
     options.WithOpenApiRoutePattern("/openapi/v1.json");
     options.WithTitle("Coffee Shop API");
 });
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
 app.UseHttpsRedirection();
 
