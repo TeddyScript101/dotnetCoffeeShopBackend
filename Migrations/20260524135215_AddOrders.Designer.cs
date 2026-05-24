@@ -3,6 +3,7 @@ using System;
 using CoffeeShopApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CoffeeShopApi.Migrations
 {
     [DbContext(typeof(CoffeeShopDbContext))]
-    partial class CoffeeShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260524135215_AddOrders")]
+    partial class AddOrders
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.8");
@@ -24,27 +27,6 @@ namespace CoffeeShopApi.Migrations
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("BillingAddress")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingCity")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingCountry")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingFirstName")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingLastName")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingPostalCode")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("BillingState")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -81,9 +63,6 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Phone")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PhoneNumber")
