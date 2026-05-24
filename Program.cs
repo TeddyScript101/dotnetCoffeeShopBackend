@@ -103,4 +103,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Health check endpoint for frontend warm-up detection
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+   .AllowAnonymous()
+   .WithTags("Health");
+
 app.Run();
