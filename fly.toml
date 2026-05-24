@@ -1,0 +1,26 @@
+# fly.toml - Fly.io configuration for CoffeeShopApi
+# Replace 'coffee-shop-api-YOUR-NAME' with your actual app name from: flyctl launch
+app = 'coffee-shop-api-YOUR-NAME'
+primary_region = 'sin'
+
+[build]
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Persistent volume so SQLite survives redeploys
+[[mounts]]
+  source = 'coffeedb_data'
+  destination = '/data'

@@ -9,10 +9,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Read allowed origins from env var in production (comma-separated)
+// e.g. CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:5173
+var allowedOrigins = builder.Configuration["CorsOrigins"]
+    ?? "http://localhost:5173";
+var origins = allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(origins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
@@ -70,13 +76,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Swagger/Scalar are always enabled so portfolio reviewers can explore the API
+app.MapOpenApi();
+app.UseSwagger();
+app.UseSwaggerUI();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    
     app.MapScalarApiReference(options =>
     {
         options.WithOpenApiRoutePattern("/openapi/v1.json");

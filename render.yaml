@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: coffee-shop-api
+    runtime: docker
+    region: singapore
+    plan: free
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Jwt__Key
+        generateValue: true
+      - key: CorsOrigins
+        value: http://localhost:5173
