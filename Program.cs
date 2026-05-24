@@ -103,8 +103,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Health check endpoint for frontend warm-up detection
+// RequireCors ensures CORS headers are sent even in Brave with Shields up
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
    .AllowAnonymous()
+   .RequireCors("AllowFrontend")
    .WithTags("Health");
 
 app.Run();
