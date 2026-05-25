@@ -13,6 +13,11 @@ public class UserProfileDto
     public string? BillingState { get; set; }
     public string? BillingPostalCode { get; set; }
     public string? BillingCountry { get; set; }
+
+    // Membership / loyalty info
+    public int Points { get; set; }
+    public string Tier { get; set; } = "Bronze";
+    public DateTime? MemberSince { get; set; }
 }
 
 public class UpdateProfileRequest

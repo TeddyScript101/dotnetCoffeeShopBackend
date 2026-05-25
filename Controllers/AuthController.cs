@@ -1,3 +1,4 @@
+using CoffeeShopApi.Data;
 using CoffeeShopApi.DTOs;
 using CoffeeShopApi.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -16,11 +17,13 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IConfiguration _configuration;
+    private readonly CoffeeShopDbContext _db;
 
-    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration, CoffeeShopDbContext db)
     {
         _userManager = userManager;
         _configuration = configuration;
+        _db = db;
     }
 
     [HttpPost("register")]
@@ -32,6 +35,18 @@ public class AuthController : ControllerBase
         if (result.Succeeded)
         {
             await _userManager.AddToRoleAsync(user, "Customer");
+
+            // Create a Membership record so the user can earn points from day one
+            _db.Memberships.Add(new Membership
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Points = 0,
+                Tier = "Bronze",
+                JoinedAt = DateTime.UtcNow,
+            });
+            await _db.SaveChangesAsync();
+
             return Ok(new { Message = "User registered successfully" });
         }
         return BadRequest(result.Errors);

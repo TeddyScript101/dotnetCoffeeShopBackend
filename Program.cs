@@ -2,11 +2,13 @@ using Scalar.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Events.Consumers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +80,26 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
+// Register MassTransit with RabbitMQ transport
+builder.Services.AddMassTransit(x =>
+{
+    // Register all consumers — each one listens to its own queue
+    x.AddConsumer<OrderCreatedConsumer>();
+    x.AddConsumer<OrderStatusChangedConsumer>();
+
+    x.UsingRabbitMq((ctx, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>
+        {
+            h.Username(builder.Configuration["RabbitMQ:Username"] ?? "guest");
+            h.Password(builder.Configuration["RabbitMQ:Password"] ?? "guest");
+        });
+
+        // Auto-creates queues and exchanges based on consumer class names
+        cfg.ConfigureEndpoints(ctx);
+    });
+});
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

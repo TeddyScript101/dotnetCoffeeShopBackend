@@ -1,6 +1,8 @@
 using CoffeeShopApi.Data;
 using CoffeeShopApi.DTOs;
+using CoffeeShopApi.Events.Integration;
 using CoffeeShopApi.Models;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +16,12 @@ namespace CoffeeShopApi.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly CoffeeShopDbContext _db;
+    private readonly IPublishEndpoint _publishEndpoint;
 
-    public OrdersController(CoffeeShopDbContext db)
+    public OrdersController(CoffeeShopDbContext db, IPublishEndpoint publishEndpoint)
     {
         _db = db;
+        _publishEndpoint = publishEndpoint;
     }
 
     // POST /api/orders — place a new order
@@ -117,6 +121,15 @@ public class OrdersController : ControllerBase
 
         _db.Orders.Add(order);
         await _db.SaveChangesAsync();
+
+        // Publish event to RabbitMQ — consumers handle points, notifications, etc.
+        await _publishEndpoint.Publish(new OrderCreatedIntegrationEvent(
+            OrderId: order.Id,
+            UserId: userId,
+            Total: order.Total,
+            ItemCount: orderItems.Count,
+            CreatedAt: order.CreatedAt
+        ));
 
         return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, MapToDto(order));
     }

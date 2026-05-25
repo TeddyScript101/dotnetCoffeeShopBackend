@@ -1,8 +1,10 @@
+using CoffeeShopApi.Data;
 using CoffeeShopApi.DTOs;
 using CoffeeShopApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace CoffeeShopApi.Controllers;
@@ -13,10 +15,12 @@ namespace CoffeeShopApi.Controllers;
 public class AccountController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly CoffeeShopDbContext _db;
 
-    public AccountController(UserManager<ApplicationUser> userManager)
+    public AccountController(UserManager<ApplicationUser> userManager, CoffeeShopDbContext db)
     {
         _userManager = userManager;
+        _db = db;
     }
 
     // GET /api/account/profile
@@ -30,7 +34,10 @@ public class AccountController : ControllerBase
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return NotFound();
 
-        return Ok(MapToDto(user));
+        var membership = await _db.Memberships
+            .FirstOrDefaultAsync(m => m.UserId == userId);
+
+        return Ok(MapToDto(user, membership));
     }
 
     // PUT /api/account/profile — update billing address + phone
@@ -57,7 +64,10 @@ public class AccountController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(new { message = string.Join("; ", result.Errors.Select(e => e.Description)) });
 
-        return Ok(MapToDto(user));
+        var membership = await _db.Memberships
+            .FirstOrDefaultAsync(m => m.UserId == userId);
+
+        return Ok(MapToDto(user, membership));
     }
 
     // PUT /api/account/change-password
@@ -84,7 +94,7 @@ public class AccountController : ControllerBase
         return Ok(new { message = "Password updated successfully." });
     }
 
-    private static UserProfileDto MapToDto(ApplicationUser user) => new()
+    private static UserProfileDto MapToDto(ApplicationUser user, Membership? membership) => new()
     {
         Email = user.Email ?? string.Empty,
         FirstName = user.FirstName,
@@ -97,5 +107,8 @@ public class AccountController : ControllerBase
         BillingState = user.BillingState,
         BillingPostalCode = user.BillingPostalCode,
         BillingCountry = user.BillingCountry,
+        Points = membership?.Points ?? 0,
+        Tier = membership?.Tier ?? "Bronze",
+        MemberSince = membership?.JoinedAt,
     };
 }
