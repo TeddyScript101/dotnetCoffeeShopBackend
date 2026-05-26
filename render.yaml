@@ -11,3 +11,5 @@ services:
         generateValue: true
       - key: CorsOrigins
         value: http://localhost:5173
+      - key: ConnectionStrings__DefaultConnection
+        sync: false

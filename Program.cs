@@ -50,9 +50,9 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Configure EF Core with SQLite
+// Configure EF Core with PostgreSQL (Neon)
 builder.Services.AddDbContext<CoffeeShopDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
