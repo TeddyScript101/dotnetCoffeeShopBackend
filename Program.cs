@@ -81,24 +81,33 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// Register MassTransit with RabbitMQ transport
+// Register MassTransit — RabbitMQ in local dev, in-memory on Render (no broker configured)
 builder.Services.AddMassTransit(x =>
 {
-    // Register all consumers — each one listens to its own queue
     x.AddConsumer<OrderCreatedConsumer>();
     x.AddConsumer<OrderStatusChangedConsumer>();
 
-    x.UsingRabbitMq((ctx, cfg) =>
-    {
-        cfg.Host(builder.Configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>
-        {
-            h.Username(builder.Configuration["RabbitMQ:Username"] ?? "guest");
-            h.Password(builder.Configuration["RabbitMQ:Password"] ?? "guest");
-        });
+    var rabbitMqHost = builder.Configuration["RabbitMQ:Host"];
 
-        // Auto-creates queues and exchanges based on consumer class names
-        cfg.ConfigureEndpoints(ctx);
-    });
+    if (!string.IsNullOrEmpty(rabbitMqHost))
+    {
+        x.UsingRabbitMq((ctx, cfg) =>
+        {
+            cfg.Host(rabbitMqHost, "/", h =>
+            {
+                h.Username(builder.Configuration["RabbitMQ:Username"] ?? "guest");
+                h.Password(builder.Configuration["RabbitMQ:Password"] ?? "guest");
+            });
+
+            // Auto-creates queues and exchanges based on consumer class names
+            cfg.ConfigureEndpoints(ctx);
+        });
+    }
+    else
+    {
+        // No broker configured — process messages in-process (suitable for single-instance deployments)
+        x.UsingInMemory((ctx, cfg) => cfg.ConfigureEndpoints(ctx));
+    }
 });
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -142,6 +151,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Minimal keep-warm endpoint for cron-job pinging (e.g. cron-job.org)
+// Registered before other middleware so it responds immediately, even during cold start
+app.MapGet("/ping", () => "pong")
+   .AllowAnonymous()
+   .ExcludeFromDescription();
 
 // Health check endpoint for frontend warm-up detection
 // RequireCors ensures CORS headers are sent even in Brave with Shields up
