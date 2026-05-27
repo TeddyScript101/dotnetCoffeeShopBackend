@@ -4,6 +4,7 @@ services:
     runtime: docker
     region: singapore
     plan: free
+    healthCheckPath: /health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

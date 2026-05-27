@@ -3,12 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Events.Consumers;
+using CoffeeShopApi.Services;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Text;
 using MassTransit;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,11 +87,38 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "ThisIsAVerySecretKeyForJwtAuthenticationWhichShouldBeLongEnough"))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            builder.Configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("JWT signing key (Jwt:Key) is not configured.")))
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            var jti = context.Principal?.FindFirstValue("jti");
+            if (jti is null) return Task.CompletedTask;
+            var blacklist = context.HttpContext.RequestServices.GetRequiredService<ITokenBlacklist>();
+            if (blacklist.IsRevoked(jti))
+                context.Fail("Token has been revoked.");
+            return Task.CompletedTask;
+        }
     };
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSingleton<ITokenBlacklist, InMemoryTokenBlacklist>();
+builder.Services.AddRateLimiter(options =>
+{
+    // Max 10 login attempts per IP per minute
+    options.AddFixedWindowLimiter("login", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiter.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 // Register MassTransit — RabbitMQ in local dev, in-memory on Render (no broker configured)
 builder.Services.AddMassTransit(x =>
@@ -166,6 +197,16 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { message = "An unexpected error occurred." });
+    });
+});
+
 // MapOpenApi serves the raw spec at /openapi/v1.json
 // Scalar serves the interactive UI at /scalar/v1 (works in all environments)
 // Swagger UI is only used in Development (Swashbuckle 10.x has static file issues in production)
@@ -186,6 +227,7 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

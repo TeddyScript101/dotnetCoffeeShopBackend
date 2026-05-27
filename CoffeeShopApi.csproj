@@ -6,6 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Exclude the test project that lives as a subdirectory -->
+  <ItemGroup>
+    <Compile Remove="CoffeeShopApi.Tests/**" />
+    <Content Remove="CoffeeShopApi.Tests/**" />
+    <EmbeddedResource Remove="CoffeeShopApi.Tests/**" />
+    <None Remove="CoffeeShopApi.Tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MassTransit" Version="8.4.1" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />

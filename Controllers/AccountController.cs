@@ -81,9 +81,6 @@ public class AccountController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.CurrentPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
             return BadRequest(new { message = "Both current and new password are required." });
 
-        if (req.NewPassword.Length < 6)
-            return BadRequest(new { message = "New password must be at least 6 characters." });
-
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return NotFound();
 

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CoffeeShopApi.DTOs;
 
 public class UserProfileDto
@@ -22,18 +24,36 @@ public class UserProfileDto
 
 public class UpdateProfileRequest
 {
+    [MaxLength(20)]
     public string? Phone { get; set; }
+
+    [MaxLength(100)]
     public string? BillingFirstName { get; set; }
+
+    [MaxLength(100)]
     public string? BillingLastName { get; set; }
+
+    [MaxLength(200)]
     public string? BillingAddress { get; set; }
+
+    [MaxLength(100)]
     public string? BillingCity { get; set; }
+
+    [MaxLength(100)]
     public string? BillingState { get; set; }
+
+    [MaxLength(20)]
     public string? BillingPostalCode { get; set; }
+
+    [MaxLength(100)]
     public string? BillingCountry { get; set; }
 }
 
 public class ChangePasswordRequest
 {
+    [Required]
     public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required]
     public string NewPassword { get; set; } = string.Empty;
 }

@@ -22,17 +22,27 @@ public class AdminOrdersController : ControllerBase
         _publishEndpoint = publishEndpoint;
     }
 
-    // GET /api/admin/orders — list all orders (admin view)
+    // GET /api/admin/orders — list all orders (admin view), paginated
     [HttpGet]
-    public async Task<IActionResult> GetAllOrders()
+    public async Task<IActionResult> GetAllOrders(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var orders = await _db.Orders
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
+
+        var query = _db.Orders
             .Include(o => o.Items)
-            .OrderByDescending(o => o.CreatedAt)
+            .OrderByDescending(o => o.CreatedAt);
+
+        var total = await query.CountAsync();
+        var orders = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(o => new
             {
                 o.Id,
-                o.UserId,
+                CustomerEmail = _db.Users.Where(u => u.Id == o.UserId).Select(u => u.Email).FirstOrDefault(),
                 o.Status,
                 o.PaymentStatus,
                 o.Total,
@@ -41,7 +51,14 @@ public class AdminOrdersController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(orders);
+        return Ok(new
+        {
+            data = orders,
+            page,
+            pageSize,
+            total,
+            totalPages = (int)Math.Ceiling((double)total / pageSize),
+        });
     }
 
     // PATCH /api/admin/orders/{id}/status — update order status and publish event

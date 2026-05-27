@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using CoffeeShopApi.Models;
 
 namespace CoffeeShopApi.DTOs;
@@ -6,34 +7,64 @@ namespace CoffeeShopApi.DTOs;
 
 public class CreateOrderRequest
 {
+    [Required]
     public List<CreateOrderItemRequest> Items { get; set; } = [];
+
+    [Required]
     public ShippingAddressRequest ShippingAddress { get; set; } = new();
+
+    [Required]
     public PaymentRequest Payment { get; set; } = new();
 }
 
 public class CreateOrderItemRequest
 {
+    [Required]
     public Guid ProductId { get; set; }
+
+    [Range(1, 100)]
     public int Quantity { get; set; }
 }
 
 public class ShippingAddressRequest
 {
+    [Required][MaxLength(100)]
     public string FirstName { get; set; } = string.Empty;
+
+    [Required][MaxLength(100)]
     public string LastName { get; set; } = string.Empty;
+
+    [Required][MaxLength(200)]
     public string Address { get; set; } = string.Empty;
+
+    [Required][MaxLength(100)]
     public string City { get; set; } = string.Empty;
+
+    [MaxLength(100)]
     public string State { get; set; } = string.Empty;
+
+    [Required][MaxLength(20)]
     public string PostalCode { get; set; } = string.Empty;
+
+    [Required][MaxLength(100)]
     public string Country { get; set; } = string.Empty;
 }
 
 public class PaymentRequest
 {
-    // Simulated card info — only last four digits are persisted
+    // Simulated card info — only last four digits are persisted.
+    // WARNING: In production, never send raw card data to your server.
+    // Use a payment provider (Stripe, Braintree) and tokenise on the client.
+    [Required]
     public string CardNumber { get; set; } = string.Empty;
+
+    [Required]
     public string CardExpiry { get; set; } = string.Empty;
+
+    [Required]
     public string CardCvc { get; set; } = string.Empty;
+
+    [Required][MaxLength(200)]
     public string CardholderName { get; set; } = string.Empty;
 }
 
