@@ -87,13 +87,6 @@ public class OrdersController : ControllerBase
             });
         }
 
-        // Deduct stock
-        foreach (var reqItem in req.Items)
-        {
-            var product = products.First(p => p.Id == reqItem.ProductId);
-            product.StockQuantity -= reqItem.Quantity;
-        }
-
         var subtotal = orderItems.Sum(i => i.UnitPrice * i.Quantity);
         var shippingCost = subtotal >= 100m ? 0m : 10m; // Free shipping over $100
         var total = subtotal + shippingCost;
@@ -119,8 +112,28 @@ public class OrdersController : ControllerBase
             CreatedAt = DateTime.UtcNow,
         };
 
+        // Deduct stock atomically and save the order in one transaction to prevent
+        // race conditions where two concurrent requests both pass the stock check
+        // but both succeed in deducting from the same product.
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        foreach (var reqItem in req.Items)
+        {
+            var productName = products.First(p => p.Id == reqItem.ProductId).Name;
+            var rowsAffected = await _db.Products
+                .Where(p => p.Id == reqItem.ProductId && p.StockQuantity >= reqItem.Quantity)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.StockQuantity, p => p.StockQuantity - reqItem.Quantity));
+
+            if (rowsAffected == 0)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(new { message = $"Insufficient stock for {productName}." });
+            }
+        }
+
         _db.Orders.Add(order);
         await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         // Publish event to RabbitMQ — consumers handle points, notifications, etc.
         await _publishEndpoint.Publish(new OrderCreatedIntegrationEvent(
@@ -134,9 +147,45 @@ public class OrdersController : ControllerBase
         return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, MapToDto(order));
     }
 
-    // GET /api/orders — list my orders (most recent first)
+    // GET /api/orders — list my orders (most recent first), paginated
     [HttpGet]
-    public async Task<IActionResult> GetMyOrders()
+    public async Task<IActionResult> GetMyOrders(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
+
+        var query = _db.Orders
+            .Where(o => o.UserId == userId)
+            .Include(o => o.Items)
+            .OrderByDescending(o => o.CreatedAt);
+
+        var total = await query.CountAsync();
+        var orders = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data = orders.Select(MapToDto),
+            page,
+            pageSize,
+            total,
+            totalPages = (int)Math.Ceiling((double)total / pageSize),
+        });
+    }
+
+    // DELETE /api/orders — delete ALL orders for the current user and restore stock.
+    // Intended for e2e test teardown only; safe because it is scoped to the caller's userId.
+    [HttpDelete]
+    public async Task<IActionResult> DeleteMyOrders()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
@@ -144,12 +193,30 @@ public class OrdersController : ControllerBase
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
         var orders = await _db.Orders
-            .Where(o => o.UserId == userId)
             .Include(o => o.Items)
-            .OrderByDescending(o => o.CreatedAt)
+            .Where(o => o.UserId == userId)
             .ToListAsync();
 
-        return Ok(orders.Select(MapToDto));
+        if (orders.Count == 0) return Ok(new { deleted = 0 });
+
+        await using var transaction = await _db.Database.BeginTransactionAsync();
+
+        foreach (var order in orders)
+        {
+            foreach (var item in order.Items)
+            {
+                await _db.Products
+                    .Where(p => p.Id == item.ProductId)
+                    .ExecuteUpdateAsync(s =>
+                        s.SetProperty(p => p.StockQuantity, p => p.StockQuantity + item.Quantity));
+            }
+        }
+
+        _db.Orders.RemoveRange(orders);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new { deleted = orders.Count });
     }
 
     // GET /api/orders/{id} — get a single order
