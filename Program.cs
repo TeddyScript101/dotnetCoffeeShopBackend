@@ -107,6 +107,9 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<ITokenBlacklist, InMemoryTokenBlacklist>();
+
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<DbMigrationService>();
 builder.Services.AddRateLimiter(options =>
 {
     // Max 10 login attempts per IP per minute
@@ -156,44 +159,16 @@ builder.Services.AddControllers()
 
 var app = builder.Build();
 
-// Run migrations and seed data on startup.
-// Neon free tier also has a cold start (up to ~30 s). Retry with backoff so
-// a slow DB wake-up doesn't crash the app and trigger Render's error page.
-using (var scope = app.Services.CreateScope())
+// DB migration and seeding run in DbMigrationService (IHostedService) so the app
+// starts accepting requests immediately — /ping responds during Neon cold start
+// instead of blocking startup and triggering Render's crash-restart cycle.
+// Tests use EnsureCreated via CustomWebApplicationFactory instead.
+if (app.Environment.IsEnvironment("Testing"))
 {
-    const int maxAttempts = 6;
-    const int retryDelayMs = 8_000; // 8 s per retry → up to ~40 s total wait
-
-    for (int attempt = 1; attempt <= maxAttempts; attempt++)
-    {
-        try
-        {
-            var db = scope.ServiceProvider.GetRequiredService<CoffeeShopDbContext>();
-
-            // Use EnsureCreated in Testing (SQLite in-memory), MigrateAsync everywhere else
-            if (app.Environment.IsEnvironment("Testing"))
-                await db.Database.EnsureCreatedAsync();
-            else
-                await db.Database.MigrateAsync();
-
-            await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
-
-            // Skip auto-seeding demo data in tests — test classes seed their own data
-            if (!app.Environment.IsEnvironment("Testing"))
-                await DatabaseSeeder.SeedDataAsync(scope.ServiceProvider);
-
-            break; // success — exit retry loop
-        }
-        catch (Exception ex) when (attempt < maxAttempts)
-        {
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger.LogWarning(ex,
-                "DB init attempt {Attempt}/{Max} failed (Neon cold start?). Retrying in {Delay} ms...",
-                attempt, maxAttempts, retryDelayMs);
-            await Task.Delay(retryDelayMs);
-        }
-        // Last attempt: let the exception propagate so the crash is visible in Render logs
-    }
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<CoffeeShopDbContext>();
+    await db.Database.EnsureCreatedAsync();
+    await RoleSeeder.SeedRolesAsync(scope.ServiceProvider);
 }
 
 // Configure the HTTP request pipeline.
