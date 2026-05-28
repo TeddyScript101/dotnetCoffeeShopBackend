@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys,json; d=json.load(sys.stdin); p=d.get('file_path',''); sys.exit(2 if any(x in p for x in ['appsettings.Development.json','Migrations/']) else 0)\"",
+            "blockOnFailure": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"[[ \\\"$CLAUDE_TOOL_INPUT_FILE_PATH\\\" == *.cs ]] && cd /Users/teddy/Documents/programming/claude-ai-agents/coffee-shop/CoffeeShopApi && dotnet build -q 2>&1 | tail -5 || true\""
+          }
+        ]
+      }
+    ]
+  }
+}
