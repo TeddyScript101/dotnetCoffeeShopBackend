@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 
-const FRONTEND = 'https://teddyyee-coffee-shop-frontend.vercel.app';
+const FRONTEND = 'https://teddyyee-coffee-shop-frontend.vercel.app/warming-up';
 const BACKEND = 'https://dotnetcoffeeshopbackend.onrender.com';
 const TIMEOUT = 10 * 60 * 1000;
 
