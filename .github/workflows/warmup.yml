@@ -2,7 +2,7 @@ name: Cold Start Warm-up
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 8 AM AEST (UTC+10)
+    - cron: '0 20 * * *'  # 6 AM AEST (UTC+10)
   workflow_dispatch:
 
 jobs:
