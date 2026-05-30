@@ -1,7 +1,0 @@
-{
-  "name": "warmup",
-  "private": true,
-  "dependencies": {
-    "playwright": "latest"
-  }
-}
