@@ -1,9 +1,10 @@
 using Scalar.AspNetCore;
+using Stripe;
+using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Events.Consumers;
-using CoffeeShopApi.Services;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -15,6 +16,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 // Read allowed origins from env var in production (comma-separated)
 // e.g. CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:5173
@@ -107,6 +110,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<ITokenBlacklist, InMemoryTokenBlacklist>();
+builder.Services.AddScoped<IStripePaymentService, StripePaymentService>();
 
 if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddHostedService<DbMigrationService>();

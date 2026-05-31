@@ -52,20 +52,8 @@ public class ShippingAddressRequest
 
 public class PaymentRequest
 {
-    // Simulated card info — only last four digits are persisted.
-    // WARNING: In production, never send raw card data to your server.
-    // Use a payment provider (Stripe, Braintree) and tokenise on the client.
     [Required]
-    public string CardNumber { get; set; } = string.Empty;
-
-    [Required]
-    public string CardExpiry { get; set; } = string.Empty;
-
-    [Required]
-    public string CardCvc { get; set; } = string.Empty;
-
-    [Required][MaxLength(200)]
-    public string CardholderName { get; set; } = string.Empty;
+    public string PaymentIntentId { get; set; } = string.Empty;
 }
 
 // ---- Response DTOs ----

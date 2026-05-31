@@ -1,6 +1,7 @@
 using CoffeeShopApi.DTOs;
 using CoffeeShopApi.Tests.Helpers;
 using CoffeeShopApi.Tests.Infrastructure;
+using CoffeeShopApi.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -47,7 +48,7 @@ public class OrdersControllerTests : IClassFixture<CustomWebApplicationFactory>,
         Assert.NotNull(order);
         Assert.Equal("Processing", order.Status);
         Assert.Equal("Paid", order.PaymentStatus);
-        Assert.Equal("1111", order.CardLastFour); // last 4 of "4111111111111111"
+        Assert.Equal("4242", order.CardLastFour); // last 4 from FakeStripePaymentService
         Assert.Single(order.Items);
         Assert.NotEqual(Guid.Empty, order.Id);
     }
@@ -118,61 +119,18 @@ public class OrdersControllerTests : IClassFixture<CustomWebApplicationFactory>,
     }
 
     [Fact]
-    public async Task CreateOrder_WithCardTooShort_Returns400()
+    public async Task CreateOrder_WithUnconfirmedPaymentIntent_Returns400()
     {
         _client.SetBearerToken(_customerToken);
         var productId = await SeedFreshProductAsync(price: 20.00m, stock: 10);
 
         var request = BuildValidOrder(productId);
-        request.Payment.CardNumber = "123456789012"; // only 12 digits
+        request.Payment.PaymentIntentId = "pi_test_unknown_or_not_succeeded";
 
         var response = await _client.PostAsync("/api/orders", request.ToJsonContent());
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Invalid card number.", body.GetProperty("message").GetString());
-    }
-
-    [Fact]
-    public async Task CreateOrder_WithCardContainingLetters_Returns400()
-    {
-        _client.SetBearerToken(_customerToken);
-        var productId = await SeedFreshProductAsync(price: 20.00m, stock: 10);
-
-        var request = BuildValidOrder(productId);
-        request.Payment.CardNumber = "4111ABCD11111111"; // 16 chars but not all digits
-
-        var response = await _client.PostAsync("/api/orders", request.ToJsonContent());
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Invalid card number.", body.GetProperty("message").GetString());
-    }
-
-    [Fact]
-    public async Task CreateOrder_WithCardTooLong_Returns400()
-    {
-        _client.SetBearerToken(_customerToken);
-        var productId = await SeedFreshProductAsync(price: 20.00m, stock: 10);
-
-        var request = BuildValidOrder(productId);
-        request.Payment.CardNumber = "41111111111111111111"; // 20 digits — too long
-
-        var response = await _client.PostAsync("/api/orders", request.ToJsonContent());
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateOrder_WithCardContainingSpaces_StripsThenAccepts()
-    {
-        // The controller strips spaces before validation, so a well-formatted card
-        // number with spaces should be accepted.
-        _client.SetBearerToken(_customerToken);
-        var productId = await SeedFreshProductAsync(price: 20.00m, stock: 10);
-
-        var request = BuildValidOrder(productId);
-        request.Payment.CardNumber = "4111 1111 1111 1111"; // spaces stripped = 16 digits
-
-        var response = await _client.PostAsync("/api/orders", request.ToJsonContent());
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("Payment has not been confirmed.", body.GetProperty("message").GetString());
     }
 
     [Fact]
@@ -393,10 +351,7 @@ public class OrdersControllerTests : IClassFixture<CustomWebApplicationFactory>,
     private static PaymentRequest ValidPayment() =>
         new PaymentRequest
         {
-            CardNumber = "4111111111111111", // 16 digits, last four = 1111
-            CardExpiry = "12/26",
-            CardCvc = "123",
-            CardholderName = "John Doe",
+            PaymentIntentId = FakeStripePaymentService.ValidPaymentIntentId,
         };
 
     // Seeds a fresh CoffeeBean with the given price and stock, returns its ID.

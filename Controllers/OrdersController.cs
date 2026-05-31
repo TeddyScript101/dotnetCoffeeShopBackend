@@ -2,6 +2,7 @@ using CoffeeShopApi.Data;
 using CoffeeShopApi.DTOs;
 using CoffeeShopApi.Events.Integration;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Services;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,11 +18,13 @@ public class OrdersController : ControllerBase
 {
     private readonly CoffeeShopDbContext _db;
     private readonly IPublishEndpoint _publishEndpoint;
+    private readonly IStripePaymentService _stripe;
 
-    public OrdersController(CoffeeShopDbContext db, IPublishEndpoint publishEndpoint)
+    public OrdersController(CoffeeShopDbContext db, IPublishEndpoint publishEndpoint, IStripePaymentService stripe)
     {
         _db = db;
         _publishEndpoint = publishEndpoint;
+        _stripe = stripe;
     }
 
     // POST /api/orders — place a new order
@@ -49,10 +52,12 @@ public class OrdersController : ControllerBase
             return BadRequest(new { message = "Incomplete shipping address." });
         }
 
-        // Validate simulated card (just check length)
-        var cardNumber = req.Payment?.CardNumber?.Replace(" ", "") ?? "";
-        if (cardNumber.Length < 13 || cardNumber.Length > 19 || !cardNumber.All(char.IsDigit))
-            return BadRequest(new { message = "Invalid card number." });
+        // Verify payment with Stripe
+        var result = await _stripe.VerifyPaymentIntentAsync(req.Payment.PaymentIntentId);
+        if (!result.IsSucceeded)
+            return BadRequest(new { message = "Payment has not been confirmed." });
+
+        var cardLastFour = result.CardLastFour;
 
         // Fetch products from DB to get canonical prices
         var productIds = req.Items.Select(i => i.ProductId).ToList();
@@ -103,8 +108,8 @@ public class OrdersController : ControllerBase
             ShippingState = addr.State ?? string.Empty,
             ShippingPostalCode = addr.PostalCode,
             ShippingCountry = addr.Country,
-            CardLastFour = cardNumber[^4..],
-            PaymentStatus = PaymentStatus.Paid, // Simulated — always succeeds
+            CardLastFour = cardLastFour,
+            PaymentStatus = PaymentStatus.Paid,
             Status = OrderStatus.Processing,
             Subtotal = subtotal,
             ShippingCost = shippingCost,

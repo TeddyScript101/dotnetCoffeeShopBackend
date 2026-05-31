@@ -1,4 +1,5 @@
 using CoffeeShopApi.Data;
+using CoffeeShopApi.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -56,6 +57,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<CoffeeShopDbContext>(options =>
                 options.UseSqlite(
                     $"DataSource={_dbName};Mode=Memory;Cache=Shared"));
+
+            // Replace the real Stripe service with a fake so tests never hit Stripe's API.
+            services.AddScoped<IStripePaymentService, FakeStripePaymentService>();
         });
     }
 
