@@ -1,11 +1,10 @@
 name: Cold Start Warm-up
 
 on:
-  schedule:
-    # Awake window: 07:00-23:00 AEST (UTC+10) daily, ~16h/day ≈ 480 instance-hrs/month
-    # (stays under Render free tier's 750 instance-hrs/month cap; overnight is left to sleep)
-    - cron: '*/10 21-23 * * *'  # 21:00-23:59 UTC = 07:00-09:59 AEST
-    - cron: '*/10 0-13 * * *'   # 00:00-13:59 UTC = 10:00-23:59 AEST
+  # Keep-alive is handled by cron-job.org instead — GitHub Actions' schedule
+  # trigger is best-effort and can queue up delayed/bursty runs, which
+  # collided with cron-job.org's pings and tripped Cloudflare's 429s.
+  # This is left as a manual/backup trigger only.
   workflow_dispatch:
 
 jobs:
