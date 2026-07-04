@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: coffee-shop-api
+    name: dotnetCoffeeShopBackend
     runtime: docker
     region: singapore
     plan: free
@@ -13,4 +13,6 @@ services:
       - key: CorsOrigins
         value: https://teddyyee-coffee-shop-frontend.vercel.app
       - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Stripe__SecretKey
         sync: false
